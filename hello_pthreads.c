@@ -13,6 +13,7 @@ int main(int argc, char **argv) {
     thread1_create();
     printf("main thread paused\n");
     pause();
+    return 0;
 
 }
 
@@ -23,14 +24,13 @@ void thread1_create() {
     //Never pass data on the local stack frame of threa1_create() function
     static char *thread1_input = "Thread 1";
 
-    int rc = pthread_create(&thread1, NULL, (thread1_callback)(thread1_input), (void*)thread1_input);
+    int rc = pthread_create(&thread1, NULL, (thread1_callback), (void*)thread1_input);
+
 
     if(rc != 0) {
         perror("Error creating a new thread\n");
         exit(0);
     }
-
-    printf("New thread created. pthread_create() -> %d, thread1 %lu\n", rc, thread1);
 }
 
 
