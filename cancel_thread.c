@@ -4,8 +4,8 @@
 #include <unistd.h> 
 
 
-static void* workerThreadA(void*);
-static void* workerThreadB(void*);
+static void* workerA(void*);
+static void* workerB(void*);
 
 typedef struct rect {
     float height;
@@ -19,28 +19,27 @@ int main() {
     pthread_t handleA;
 
     
-    //Must be static. Not a thread local 
+    //Must be a static. Not a thread local 
     //Thread's stack privacy is enforced
     static rectangle r = {10.0, 12.3};
     
 
     //Forking point A. Pass a rectangle 
-    int rc = pthread_create(&handleA, NULL, (workerThreadA), (void*)&r);
+    int rc = pthread_create(&handleA, NULL, (workerA), (void*)&r);
 
-    //Join workerThreadA with the main trhead
-    //receive handle to the B thread
+    //Join workerA with the main trhead
+    //receive handle to the workerB thread
     void *handleB;
     pthread_join(handleA, &handleB);
 
     pthread_cancel(*((pthread_t*)handleB));
+    
 
     
-  
-
 }
 
 
-static void* workerThreadA(void* arg) {
+static void* workerA(void* arg) {
 
     static int __retval;
 
@@ -51,7 +50,7 @@ static void* workerThreadA(void* arg) {
     rectangle __r = {9.2, 7.1};
     
 
-    __retval = pthread_create(&__handleB, NULL, (workerThreadB), (void*)&__r);
+    __retval = pthread_create(&__handleB, NULL, (workerB), (void*)&__r);
 
     printf("Rectangle height -> %.2f, length -> %.2f\n", 
            ((rectangle*)(arg))->height, 
@@ -62,13 +61,9 @@ static void* workerThreadA(void* arg) {
     
 }
 
-static void* workerThreadB(void* arg) {
+static void* workerB(void* arg) {
 
     static int __retval;
-
-    //simulate some long running task
-    sleep(10);
-
 
     printf("Rectangle height -> %.2f, length -> %.2f\n", 
            ((rectangle*)(arg))->height, 
@@ -76,6 +71,7 @@ static void* workerThreadB(void* arg) {
     );
 
     printf("Thread B done...\n");
+
 
     return (void*)&__retval;
 
