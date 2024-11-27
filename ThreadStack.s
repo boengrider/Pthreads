@@ -1,4 +1,4 @@
-	.file	"static_return.c"
+	.file	"ThreadStack.c"
 	.text
 	.globl	main
 	.type	main, @function
@@ -11,15 +11,30 @@ main:
 	.cfi_offset 6, -16
 	movq	%rsp, %rbp
 	.cfi_def_cfa_register 6
+	subq	$16, %rsp
+	movq	%fs:40, %rax
+	movq	%rax, -8(%rbp)
+	xorl	%eax, %eax
+	leaq	-16(%rbp), %rax
+	movl	$0, %ecx
+	leaq	thread_a_function(%rip), %rdx
+	movl	$0, %esi
+	movq	%rax, %rdi
+	call	pthread_create@PLT
 	movl	$0, %eax
-	popq	%rbp
+	movq	-8(%rbp), %rdx
+	subq	%fs:40, %rdx
+	je	.L3
+	call	__stack_chk_fail@PLT
+.L3:
+	leave
 	.cfi_def_cfa 7, 8
 	ret
 	.cfi_endproc
 .LFE0:
 	.size	main, .-main
-	.type	foo, @function
-foo:
+	.type	thread_a_function, @function
+thread_a_function:
 .LFB1:
 	.cfi_startproc
 	endbr64
@@ -28,15 +43,14 @@ foo:
 	.cfi_offset 6, -16
 	movq	%rsp, %rbp
 	.cfi_def_cfa_register 6
-	movl	$10, %eax
+	movq	%rdi, -8(%rbp)
+	nop
 	popq	%rbp
 	.cfi_def_cfa 7, 8
 	ret
 	.cfi_endproc
 .LFE1:
-	.size	foo, .-foo
-	.local	fooStaticVariable.0
-	.comm	fooStaticVariable.0,4,4
+	.size	thread_a_function, .-thread_a_function
 	.ident	"GCC: (Ubuntu 13.2.0-23ubuntu4) 13.2.0"
 	.section	.note.GNU-stack,"",@progbits
 	.section	.note.gnu.property,"a"

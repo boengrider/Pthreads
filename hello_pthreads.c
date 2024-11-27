@@ -23,7 +23,7 @@ void thread1_create() {
 
     //Input to the thread. Either static or on the heap. 
     //static reserves space in the data section. Avilable to all
-    //Never pass data on the local stack frame of threa1_create() function
+    //Never pass data on the local stack frame of thread1_create() function
     static char *thread1_input = {"Hello Thread 1"};
 
    
@@ -37,6 +37,8 @@ void thread1_create() {
     //int rc = pthread_create(&thread1, NULL, (thread1_callback), (void*)thread1_input);
 
     int rc = pthread_create(&thread1, NULL, (thread1_callback), (void*)&luckyNumbers);
+
+    
 
 
     if(rc != 0) {
