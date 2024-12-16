@@ -64,6 +64,7 @@ int main() {
 
 static void* producer(void *data) {
     
+    srand(time(NULL));
     struct thread_params __data = *((struct thread_params*)data);
     while(1) {
         int index = rand() % 10;
