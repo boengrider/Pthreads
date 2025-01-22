@@ -3,7 +3,7 @@
 #include <pthread.h> 
 #include <unistd.h>
 
-#define PATH "/home/coach/Documents/GitHub/Pthreads/Joinable/Map-Reduce/input.txt"
+#define PATH "/home/vscode/git/Pthreads/Joinable/Map-Reduce/input.txt"
 struct WorkerData {
     FILE *_input;
     long _offsetBeginning;
