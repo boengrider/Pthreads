@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h> 
 #include <unistd.h> 
+
 //Comment
 
 
@@ -45,7 +46,6 @@ int main() {
     nouns[8] = "Student";
     nouns[9] = "Product";
 
-
  
     pthread_t prod, cons;
     struct thread_params params = { adjectives, nouns, &adjectiveIndex, &nounIndex };
@@ -57,7 +57,7 @@ int main() {
     pause();
   
 
-  
+    
 
 }
 
