@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h> //for pause()
 #include <pthread.h>
+#include <abra.h>
 
 struct sum_thread_result
 {
@@ -43,4 +44,5 @@ int main(int argc, char **argv)
     thread_factory(&worker1, 10, 20);
     printf("Pausing the main thread\n");
     pause();
+    
 }
