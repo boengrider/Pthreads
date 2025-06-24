@@ -1,0 +1,3 @@
+-I/home/coach/GitHub/Dev/src/include
+-I/usr/local/include/cjson
+-I/usr/include/x86_64-linux-gnu/curl

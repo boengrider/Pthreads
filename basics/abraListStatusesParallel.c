@@ -4,38 +4,7 @@
 #include <pthread.h>
 #include <abra.h>
 
-struct thread_args
-{
-    abra_status_collection_t *pCollection;
-    int threadId
-};
-
-void *abraListStatuses(void *arg)
-{
-    char* __input = (char *)arg;
-    
-
-    return NULL;
-}
-
-void thread1_create() 
-{
-    pthread_t pthread1;
-
-    //static, stored in the data section
-    static char *thread_input1 = "I am thread no 1";
-
-
-    int rc = pthread_create(&pthread1, NULL, abraListStatuses, (void *)thread_input1);
-
-    if(rc != 0)
-    {
-        printf("Error creating a new thread, error code: %d\n", rc);
-        exit(0);
-    }
-}
-
-
+void *printAbraStatuses(void*);
 
 abra_status_collection_t abraStatusCollection =
 {
@@ -64,5 +33,31 @@ abra_status_collection_t abraStatusCollection =
 int main(int argc, char **argv)
 {
    
-   printf("%s\n", abraStatusCollection.received.name);
+   
+   pthread_t t1,t2;
+   pthread_create(&t1, NULL, printAbraStatuses, (void*)&abraStatusCollection);
+   pthread_create(&t2, NULL, printAbraStatuses, (void*)&abraStatusCollection);
+   pthread_join(t1, NULL);
+   pthread_join(t2, NULL);
+}
+
+void *printAbraStatuses(void *_arg)
+{
+    srand(time(NULL));
+    int _sleepDuration = rand() & 10;
+    unsigned long _id = pthread_self();
+    printf("Thread %lu will pause for %d seconds\n", _id, _sleepDuration);
+    abra_status_node_t *_status = (abra_status_node_t*)_arg;
+    abra_status_collection_t *_collection = (abra_status_collection_t*)_arg;
+    int count = sizeof(abra_status_collection_t) / sizeof(abra_status_node_t);
+    
+    for(int i = 0; i < count; i++)
+    {
+        printf("(%lu) %s\n", _id, _status->name);
+        _status++;
+        sleep(_sleepDuration);
+    }
+
+    return NULL;
+
 }
