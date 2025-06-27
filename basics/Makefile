@@ -28,7 +28,13 @@ abraListStatusesParallel: clean abra.o
 	$(COMPILER) -c -I/home/coach/GitHub/Dev/src/include -I/usr/local/include/cjson abraListStatusesParallel.c -o abraListStatusesParallel.o
 	$(COMPILER) abraListStatusesParallel.o abra.o -L/usr/local/lib -lcjson -o abraListStatusesParallel
 	./abraListStatusesParallel
+
+joinableThreads:
+	$(COMPILER) joinableThreads.c -o joinableThreads
+	./joinableThreads
+	
 clean:
 	rm -f /home/coach/GitHub/Pthreads/basics/abra.o
 	rm -f /home/coach/GitHub/Pthreads/basics/threadWait.o
 	rm -f /home/coach/GitHub/Pthreads/basics/abraListStatusesParallel
+	rm -f /home/coach/GitHub/Pthreads/basics/joinableThreads
