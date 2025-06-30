@@ -34,7 +34,7 @@ joinableThreads:
 	./joinableThreads
 	
 clean:
-	rm -f /home/coach/GitHub/Pthreads/basics/abra.o
-	rm -f /home/coach/GitHub/Pthreads/basics/threadWait.o
-	rm -f /home/coach/GitHub/Pthreads/basics/abraListStatusesParallel
-	rm -f /home/coach/GitHub/Pthreads/basics/joinableThreads
+	rm -f abra.o
+	rm -f threadWait.o
+	rm -f abraListStatusesParallel
+	rm -f joinableThreads

@@ -1,3 +1,4 @@
+#include <bits/pthreadtypes.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h> //for pause()
@@ -15,9 +16,11 @@ int main(int argc, char **argv)
     char *grandChildThreadName = "Grand child";
 
     pthread_t child;
-
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
     //Create a child thread
-    int rc = pthread_create(&child, NULL, childThreadFunction , NULL);
+    int rc = pthread_create(&child, &attrs, childThreadFunction , NULL);
 
     if(rc != 0)
     {
@@ -28,7 +31,7 @@ int main(int argc, char **argv)
     printf("Waiting for the child\n");
     pthread_join(child, NULL);
     printf("Child thread finished\n");
-    pause();
+    //pause();
 }
 
 
@@ -38,7 +41,10 @@ void *childThreadFunction(void *arg)
     //Create a child thread and pass ID of the parent
     pthread_t child;
     pthread_t self = pthread_self();
-    int rc = pthread_create(&child, NULL, grandChildThreadFunction, (void*)&self);
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
+    int rc = pthread_create(&child, &attrs, grandChildThreadFunction, (void*)&self);
     //pthread_join(child, NULL);
     return NULL;
 }
