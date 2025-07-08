@@ -2,9 +2,12 @@
 /** This simple snippet will be dirty and crude. No fancy stuff
     Get the number of bytes. Split it by 3. Allocate offsets to 
     worker threads and let them scan their respective regions */
+
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h> //for pause()
 #include <pthread.h>
 #include <sys/types.h>
@@ -33,13 +36,15 @@ struct wordCounterResult
 
 struct wordCounterArgs 
 {
+    char *name;
     char *start;
-    int offset;
     int length;
+    unsigned long letterCount;
 };
 
-void *wordCounter(void*);
+void *letterCounter(void*);
 int charCounter(char*,size_t);
+void signalHandler();
 int main(int argc, char **argv)
 {
     //Character matching
@@ -77,35 +82,67 @@ int main(int argc, char **argv)
     }
 
    
-    char *start = (char*)mapStart;
-   
-    struct wordCounterArgs wcargsA = { start, 0, chunkSize };
-    struct wordCounterArgs wcargsB = { start, chunkSize, chunkSize };
-    struct wordCounterArgs wcargsC = { start, chunkSize * 2, chunkRemainder + chunkSize };
-    pthread_t wc1, wc2, wc3;
     
-    //Create counter threads
-    int rc1 = pthread_create(&wc1, NULL, wordCounter, (void*)&wcargsA);
-    int rc2 = pthread_create(&wc2, NULL, wordCounter, (void*)&wcargsB);
-    int rc3 = pthread_create(&wc3, NULL, wordCounter, (void*)&wcargsC);
 
+    char *start = (char*)mapStart;
 
+    //Info
+    printf("File size: %lu\n", fileInfo.st_size);
+    printf("Chunk 1 size: %d\nChunk 2 size: %d\nChunk 3 size: %d\n", chunkSize, chunkSize, chunkRemainder + chunkSize);
+    
+    //Prepare argument structures. These will also hold a result
+    struct wordCounterArgs wcargsA = {"T1",start, chunkSize, 0};
+    struct wordCounterArgs wcargsB = {"T2", start + chunkSize + 1, chunkSize, 0};
+    struct wordCounterArgs wcargsC = {"T3", start + (chunkSize * 2) + 1, chunkSize + chunkRemainder, 0};
+  
+     //Create counter threads
+    pthread_t wc1, wc2, wc3;
+    int rc1 = pthread_create(&wc1, NULL, letterCounter, (void*)&wcargsA);
+    int rc2 = pthread_create(&wc2, NULL, letterCounter, (void*)&wcargsB);
+    int rc3 = pthread_create(&wc3, NULL, letterCounter, (void*)&wcargsC);
 
-    pause();
+    //signal(SIGINT, signalHandler);
 
+    pthread_join(wc1, NULL);
+    pthread_join(wc2, NULL);
+    pthread_join(wc3, NULL);
+
+    printf("T1 counted %lu letters. T2 counted %lu letters. T3 counted %lu letters. Total count %lu\n", wcargsA.letterCount, wcargsB.letterCount, wcargsC.letterCount, wcargsA.letterCount + wcargsB.letterCount + wcargsC.letterCount);
+    
     
 
     return 0;
 
 }
 
-void *wordCounter(void *counterArgs)
+void *letterCounter(void *counterArgs)
 {
+
+    int letterCount = 0;
     long tid = pthread_self();
     struct wordCounterArgs *args = (struct wordCounterArgs*)counterArgs;
+    char *__next,*__last;
+    __next = args->start;
+    __last = args->start + args->length;
+    char __toLower = 'A' ^ 'a';
+    unsigned long __letterCount = args->letterCount;
 
-    printf("Counter (%lu) processing segment starting at %lu with offset %d of size %d\n", \
-           tid, (unsigned long)args->start, args->offset, args->length);
+    printf("%s processing %d bytes long segment starting at %p and endig at %p\n", args->name, args->length, __next, __last);   
+    printf("%s frist character of the segment '%c'. Last character of the segment '%c'\n", args->name, *args->start, *(args->start + args->length));
+    char __c;
+    while(__next <= __last)
+    {
+        __c = *__next | __toLower;
+
+        if((__c >= 65) && (__c <= 122))
+        {
+            __letterCount++;
+        }
+
+        __next++;
+    }
+    
+    args->letterCount = __letterCount;
     
     return NULL;
     
@@ -136,4 +173,10 @@ int charCounter(char *input, size_t length)
     }
 
     return charcount;
+}
+
+void signalHandler()
+{
+    printf("\nSIGINT caught\n");
+    exit(0);
 }

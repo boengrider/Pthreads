@@ -20,7 +20,7 @@ test:
 
 
 word_count:
-	$(COMPILER) word_count.c -o word_count
+	$(COMPILER) -g word_count.c -o word_count
 	
 clean:
 	rm -f word_count
