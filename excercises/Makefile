@@ -19,8 +19,8 @@ test:
 
 
 
-word_count:
-	$(COMPILER) -g word_count.c -o word_count
+lc:
+	$(COMPILER) -g lc.c -o lc
 	
 clean:
-	rm -f word_count
+	rm -f lc

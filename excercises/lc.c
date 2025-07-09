@@ -1,10 +1,5 @@
-//Word counter
-/** This simple snippet will be dirty and crude. No fancy stuff
-    Get the number of bytes. Split it by 3. Allocate offsets to 
-    worker threads and let them scan their respective regions */
-
+//Simple letter counter
 #include <bits/types/timer_t.h>
-#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -20,46 +15,26 @@
 
 
 
-#define LINE "This line contains some number of words, but not every character is considered a word"
-#define FILE "/home/coach/GitHub/Pthreads/excercises/resources/word_count"
-
-struct wordCounterResult
-{
-    int chunkACount;
-    char boundariesA[2];
-
-    int chunkBCount;
-    char boundariesB[2];
-
-    int chunkCCount;
-    char boundariesC[2];
-
-};
-
-struct wordCounterArgs 
+struct letterCounterArgs 
 {
     char *name;
     char *start;
     int length;
-    unsigned long letterCount;
-    char *letterArray;
+    unsigned long letterCount; //Threads will return letter count in this field
 };
 
 void *letterCounter(void*);
-int charCounter(char*,size_t);
 void signalHandler();
 int main(int argc, char **argv)
 {
-    //Character matching
-    //char *inputString = LINE;
-    //int charCount = charCounter(inputString, sizeof(LINE));
-    //printf("Character count %d\n", charCount);
 
-
-    
+    if(argc < 2) {
+        printf("Usage %s $FILE\n", argv[0]);
+        return 1;
+    }
 
     struct stat fileInfo;
-    if((stat(FILE, &fileInfo)) < 0)
+    if((stat(argv[1], &fileInfo)) < 0)
     {
         perror("Can't stat file");
         return 1;
@@ -75,7 +50,7 @@ int main(int argc, char **argv)
    
     //Open for reading
 
-    int fd = open(FILE, 0);
+    int fd = open(argv[1], 0);
     void *mapStart = mmap(NULL, fileInfo.st_size, PROT_READ, MAP_PRIVATE, fd, 0); 
     
     if(mapStart == MAP_FAILED)
@@ -85,8 +60,7 @@ int main(int argc, char **argv)
     }
 
    
-    
-
+    close(fd);
     char *start = (char*)mapStart;
 
     //Single-threaded
@@ -109,18 +83,18 @@ int main(int argc, char **argv)
    
     
     //Prepare argument structures. These will also hold a result
-    struct wordCounterArgs wcargsA = {"T1",start, chunkSize, 0};
-    struct wordCounterArgs wcargsB = {"T2", start + chunkSize + 1, chunkSize, 0};
-    struct wordCounterArgs wcargsC = {"T3", start + (chunkSize * 2) + 2, chunkSize + chunkRemainder, 0};
+    struct letterCounterArgs lcargsA = {"T1",start, chunkSize, 0};
+    struct letterCounterArgs lcargsB = {"T2", start + chunkSize + 1, chunkSize, 0};
+    struct letterCounterArgs lcargsC = {"T3", start + (chunkSize * 2) + 2, chunkSize + chunkRemainder, 0};
   
     //Time the execution from this point
     clock_t begin = clock();
 
      //Create counter threads
     pthread_t wc1, wc2, wc3;
-    int rc1 = pthread_create(&wc1, NULL, letterCounter, (void*)&wcargsA);
-    int rc2 = pthread_create(&wc2, NULL, letterCounter, (void*)&wcargsB);
-    int rc3 = pthread_create(&wc3, NULL, letterCounter, (void*)&wcargsC);
+    int rc1 = pthread_create(&wc1, NULL, letterCounter, (void*)&lcargsA);
+    int rc2 = pthread_create(&wc2, NULL, letterCounter, (void*)&lcargsB);
+    int rc3 = pthread_create(&wc3, NULL, letterCounter, (void*)&lcargsC);
 
     //signal(SIGINT, signalHandler);
 
@@ -132,7 +106,7 @@ int main(int argc, char **argv)
     clock_t timeElapsed = clock() - begin;
     time_t us = (timeElapsed * 1000000) / CLOCKS_PER_SEC;
     printf("Time spent %lu us\n", us);
-    printf("T1 counted %lu letters. T2 counted %lu letters. T3 counted %lu letters. Total count %lu\n", wcargsA.letterCount, wcargsB.letterCount, wcargsC.letterCount, wcargsA.letterCount + wcargsB.letterCount + wcargsC.letterCount);
+    printf("T1 counted %lu letters. T2 counted %lu letters. T3 counted %lu letters. Total count %lu\n", lcargsA.letterCount, lcargsB.letterCount, lcargsC.letterCount, lcargsA.letterCount + lcargsB.letterCount + lcargsC.letterCount);
     
     
 
@@ -145,7 +119,7 @@ void *letterCounter(void *counterArgs)
 
     int letterCount = 0;
     long tid = pthread_self();
-    struct wordCounterArgs *args = (struct wordCounterArgs*)counterArgs;
+    struct letterCounterArgs *args = (struct letterCounterArgs*)counterArgs;
     char *__next,*__last;
     __next = args->start;
     __last = args->start + args->length;
@@ -173,37 +147,4 @@ void *letterCounter(void *counterArgs)
     
     return NULL;
     
-}
-
-int charCounter(char *input, size_t length)
-{
-   
-    int charcount = 0;
-    char toLower = 'A' ^ 'a';
-
-    printf("A translated to %c\n", 'A' ^ toLower);
-
-    printf("Binary pattern to lower case %b\n", toLower);
-
-    for(int i = 0; i < length; i++)
-    {
-
-        char c = *(input + i) | toLower; // Translate to lower case
-        if((c >= 65) && (c <= 122))
-        {
-            printf("%c is character\n", c);
-            charcount++;
-        } else 
-        {
-            printf("%c is not a charater\n", c);
-        }
-    }
-
-    return charcount;
-}
-
-void signalHandler()
-{
-    printf("\nSIGINT caught\n");
-    exit(0);
 }
