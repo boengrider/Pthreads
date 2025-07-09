@@ -3,6 +3,7 @@
     Get the number of bytes. Split it by 3. Allocate offsets to 
     worker threads and let them scan their respective regions */
 
+#include <bits/types/timer_t.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -15,6 +16,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <regex.h>
+#include <time.h>
 
 
 
@@ -40,6 +42,7 @@ struct wordCounterArgs
     char *start;
     int length;
     unsigned long letterCount;
+    char *letterArray;
 };
 
 void *letterCounter(void*);
@@ -86,15 +89,33 @@ int main(int argc, char **argv)
 
     char *start = (char*)mapStart;
 
+    //Single-threaded
+    /**
+    clock_t begin = clock();
+    struct wordCounterArgs wargs = {"MAIN", start,chunkSize * 3 + chunkRemainder, 0};
+    letterCounter((void*)&wargs);
+    clock_t timeElapsed = clock() - begin;
+    time_t us = (timeElapsed * 1000000) / CLOCKS_PER_SEC;
+    printf("Time spent %lu us\n", us);
+    printf("%s counted %lu letters. Total count %lu\n", wargs.name, wargs.letterCount, wargs.letterCount);
+    **/
+
+    
+    //Multi-threaded
     //Info
     printf("File size: %lu\n", fileInfo.st_size);
     printf("Chunk 1 size: %d\nChunk 2 size: %d\nChunk 3 size: %d\n", chunkSize, chunkSize, chunkRemainder + chunkSize);
     
+   
+    
     //Prepare argument structures. These will also hold a result
     struct wordCounterArgs wcargsA = {"T1",start, chunkSize, 0};
     struct wordCounterArgs wcargsB = {"T2", start + chunkSize + 1, chunkSize, 0};
-    struct wordCounterArgs wcargsC = {"T3", start + (chunkSize * 2) + 1, chunkSize + chunkRemainder, 0};
+    struct wordCounterArgs wcargsC = {"T3", start + (chunkSize * 2) + 2, chunkSize + chunkRemainder, 0};
   
+    //Time the execution from this point
+    clock_t begin = clock();
+
      //Create counter threads
     pthread_t wc1, wc2, wc3;
     int rc1 = pthread_create(&wc1, NULL, letterCounter, (void*)&wcargsA);
@@ -107,6 +128,10 @@ int main(int argc, char **argv)
     pthread_join(wc2, NULL);
     pthread_join(wc3, NULL);
 
+    
+    clock_t timeElapsed = clock() - begin;
+    time_t us = (timeElapsed * 1000000) / CLOCKS_PER_SEC;
+    printf("Time spent %lu us\n", us);
     printf("T1 counted %lu letters. T2 counted %lu letters. T3 counted %lu letters. Total count %lu\n", wcargsA.letterCount, wcargsB.letterCount, wcargsC.letterCount, wcargsA.letterCount + wcargsB.letterCount + wcargsC.letterCount);
     
     
@@ -126,15 +151,17 @@ void *letterCounter(void *counterArgs)
     __last = args->start + args->length;
     char __toLower = 'A' ^ 'a';
     unsigned long __letterCount = args->letterCount;
+    
 
     printf("%s processing %d bytes long segment starting at %p and endig at %p\n", args->name, args->length, __next, __last);   
-    printf("%s frist character of the segment '%c'. Last character of the segment '%c'\n", args->name, *args->start, *(args->start + args->length));
+    printf("%s frist character of the segment '%c'. Second to last character of the segment '%c'. Last character of the segment '%c'\n", args->name, *args->start, *(args->start + args->length - 1),*(args->start + args->length));
+    
     char __c;
     while(__next <= __last)
     {
         __c = *__next | __toLower;
 
-        if((__c >= 65) && (__c <= 122))
+        if((__c >= 97) && (__c <= 122))
         {
             __letterCount++;
         }
