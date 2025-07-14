@@ -20,7 +20,10 @@ test:
 
 
 lc:
-	$(COMPILER) -g lc.c -o lc
+	$(COMPILER) lc.c -o lc
 	
+ps:
+	$(COMPILER) ps.c -o ps
 clean:
 	rm -f lc
+	rm -f ps
