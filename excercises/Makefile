@@ -24,6 +24,10 @@ lc:
 	
 ps:
 	$(COMPILER) ps.c -o ps
+
+observer:
+	$(COMPILER) observer.c -o observer
 clean:
 	rm -f lc
 	rm -f ps
+	rm -f observer
