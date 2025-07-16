@@ -1,4 +1,7 @@
 //Child observes changes and calls routine 
+//Main thread changes the value of next_operation based
+//on the input from the user
+//Observer thread reads next_operation
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
