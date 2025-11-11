@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -8,9 +8,9 @@
 #include <unistd.h>
 #include <pthread.h>
 #define MAX_BUFFER 4096
-#define OUTBOUND_PORT 8080
-
-void SendHeartbeat(void *args);
+#define SERVICE 8080
+#define TRUE 1
+void* SendHeartbeat(void *args);
 
 struct HeartBeatArgs
 {
@@ -34,10 +34,10 @@ int main()
   static struct sockaddr_in peerAddress;
   bzero(&peerAddress, sizeof(peerAddress));
   peerAddress.sin_family = AF_INET;
-  peerAddress.sin_port = htons(OUTBOUND_PORT);
+  peerAddress.sin_port = htons(SERVICE);
   peerAddress.sin_addr.s_addr = htonl(INADDR_ANY);
   
-  //Connect socket to destination
+  //Connect socket to destination in the main thread
   int rc = connect(sfd, (struct sockaddr*)&peerAddress, sizeof(peerAddress));
   if(rc < 0)
   {
@@ -47,17 +47,42 @@ int main()
 
 
 
-  static struct HeartBeatArgs args;
-  args.socket = sfd;
-  args.peerAddrSize = sizeof(peerAddress);
-  args.peerAddress = &peerAddress;
+  //Preparge argument structure
+  static struct HeartBeatArgs hbargs;
+  hbargs.socket = sfd;
+  hbargs.peerAddrSize = sizeof(peerAddress);
+  hbargs.peerAddress = &peerAddress;
 
- 
+  //Heartbeat worker thread
+  pthread_t heartBeatSender;
+  rc = pthread_create(&heartBeatSender, NULL, SendHeartbeat, (void*)&hbargs);
+
+
+  char buffer[MAX_BUFFER];
+  while(TRUE)
+  {
+        scanf("%s",buffer);
+        
+        if(strcmp("stop", buffer) == 0)
+        {
+            printf("Stopping heart beat thread\n");
+            pthread_cancel(heartBeatSender);
+            break;
+        }
+
+  }
+
+  close(sfd);
+  printf("bye\n");
   
 }
 
-void SendHeartbeat(void *args)
+void* SendHeartbeat(void *args)
 {
     struct HeartBeatArgs *__args = (struct HeartBeatArgs*)args;
-    sendto(__args->socket, "Heartbeat", 9, 0, NULL, __args->peerAddrSize);
+    while(1)
+    {
+        sendto(__args->socket, "Heartbeat", 9, 0, (struct sockaddr*)__args->peerAddress, __args->peerAddrSize);
+        sleep(5);
+    }
 }
