@@ -10,14 +10,23 @@
 #define MAX_BUFFER 4096
 #define SERVICE 8080
 #define TRUE 1
+#define MAX_THREADS 10
 void* SendHeartbeat(void *args);
+
+struct ThreadCancelInfo
+{
+    int threadCancelType;
+    int threadCancelState;
+};
 
 struct HeartBeatArgs
 {
     int socket;
     struct sockaddr_in *peerAddress;
     socklen_t peerAddrSize;
+    struct ThreadCancelInfo *threadCancelInfo[];
 };
+
 
 int main()
 {
@@ -46,18 +55,21 @@ int main()
   }
 
 
+  static struct ThreadCancelInfo info[MAX_THREADS];
+  memset(info, 0, sizeof(info));
 
-  //Preparge argument structure
+
+  //Prepare argument structure
   static struct HeartBeatArgs hbargs;
   hbargs.socket = sfd;
   hbargs.peerAddrSize = sizeof(peerAddress);
   hbargs.peerAddress = &peerAddress;
+  hbargs.threadCancelInfo = info;
 
   //Heartbeat worker thread
   pthread_t heartBeatSender;
   rc = pthread_create(&heartBeatSender, NULL, SendHeartbeat, (void*)&hbargs);
-
-
+ 
   char buffer[MAX_BUFFER];
   while(TRUE)
   {
@@ -79,9 +91,10 @@ int main()
 
 void* SendHeartbeat(void *args)
 {
+    
     struct HeartBeatArgs *__args = (struct HeartBeatArgs*)args;
     while(1)
-    {
+    {  // pthread_testcancel();
         sendto(__args->socket, "Heartbeat", 9, 0, (struct sockaddr*)__args->peerAddress, __args->peerAddrSize);
         sleep(5);
     }

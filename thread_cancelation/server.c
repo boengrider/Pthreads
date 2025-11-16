@@ -1,6 +1,8 @@
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -34,12 +36,17 @@ int main()
     socklen_t peerAddrLen = sizeof(peerAddress);
     char buffer[MAX_BUFFER];
     int bytesRead;
+    unsigned long count = 0;
 
     while(1)
     {
 
         bytesRead = recvfrom(sfd, buffer, MAX_BUFFER, 0, (struct sockaddr*)&peerAddress, &peerAddrLen);
-        buffer[bytesRead] = '\0';
+        char *ip = inet_ntoa(peerAddress.sin_addr);
+        int ip_len = strlen(ip);
+        buffer[bytesRead] = ' ';
+        strcpy(&buffer[bytesRead] + 1, ip);
+        buffer[bytesRead + ip_len + 1] = '\0';
         puts(buffer);
         
     }
