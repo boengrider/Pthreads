@@ -6,10 +6,13 @@
 #include <strings.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <syslog.h>
+
 #define MAX_BUFFER 4096
 #define INBOUND_PORT 8080
 int main()
 {
+    syslog(LOG_USER, "%s", "server started");
     //Create UDP socket
     int sfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sfd < 0)
@@ -18,6 +21,7 @@ int main()
         exit(EXIT_FAILURE);
     }
    
+    
     struct sockaddr_in serverAddress, peerAddress;
     bzero(&serverAddress, sizeof(serverAddress));
     bzero(&peerAddress, sizeof(peerAddress));

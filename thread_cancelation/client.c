@@ -11,20 +11,17 @@
 #define SERVICE 8080
 #define TRUE 1
 #define MAX_THREADS 10
-void* SendHeartbeat(void *args);
+void *SendHeartbeat(void *args);
+void HeartBeatCleanup(void *args);
 
-struct ThreadCancelInfo
-{
-    int threadCancelType;
-    int threadCancelState;
-};
+
 
 struct HeartBeatArgs
 {
     int socket;
     struct sockaddr_in *peerAddress;
     socklen_t peerAddrSize;
-    struct ThreadCancelInfo *threadCancelInfo[];
+    void *workerHeap;
 };
 
 
@@ -55,8 +52,8 @@ int main()
   }
 
 
-  static struct ThreadCancelInfo info[MAX_THREADS];
-  memset(info, 0, sizeof(info));
+ 
+
 
 
   //Prepare argument structure
@@ -64,12 +61,18 @@ int main()
   hbargs.socket = sfd;
   hbargs.peerAddrSize = sizeof(peerAddress);
   hbargs.peerAddress = &peerAddress;
-  hbargs.threadCancelInfo = info;
+
 
   //Heartbeat worker thread
   pthread_t heartBeatSender;
   rc = pthread_create(&heartBeatSender, NULL, SendHeartbeat, (void*)&hbargs);
  
+  //Wait for a bit
+  sleep(4);
+
+  //Try printing buffer allocated by the thread
+  printf("%s\n", (char*)hbargs.workerHeap);
+  
   char buffer[MAX_BUFFER];
   while(TRUE)
   {
@@ -84,18 +87,42 @@ int main()
 
   }
 
-  close(sfd);
-  printf("bye\n");
+  
+  //Join with the heart beat thread
+  pthread_join(heartBeatSender, NULL);
   
 }
 
-void* SendHeartbeat(void *args)
+void *SendHeartbeat(void *args)
 {
-    
+    int __oldType;
+    void *__heap = malloc(MAX_BUFFER);
+    char *__buffer = (char*)__heap;
+
+    *__buffer = 'O';
+    *(__buffer+1) = 'K';
+    *(__buffer+2) = '\0';
+
+    int __heartBeatsSent = 0;
     struct HeartBeatArgs *__args = (struct HeartBeatArgs*)args;
+
+    //This should be accessible by the main thread
+    __args->workerHeap = __heap;
+   
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &__oldType);
     while(1)
-    {  // pthread_testcancel();
+    {  
         sendto(__args->socket, "Heartbeat", 9, 0, (struct sockaddr*)__args->peerAddress, __args->peerAddrSize);
+        pthread_cleanup_push(HeartBeatCleanup,args);
         sleep(5);
+        pthread_cleanup_pop(1);
     }
+
+}
+
+void HeartBeatCleanup(void *args)
+{
+    struct HeartBeatArgs *__hargs = (struct HeartBeatArgs*)args;
+    free(__hargs->workerHeap);
+    printf("HeartBeatCleanup called for thread %lu\n", pthread_self());
 }
