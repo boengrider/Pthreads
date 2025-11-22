@@ -1,3 +1,4 @@
+//Hearbeat sender. Client part
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,11 +11,13 @@
 #define MAX_BUFFER 4096
 #define SERVICE 8080
 #define TRUE 1
+#define FALSE 0
 #define MAX_THREADS 10
 void *SendHeartbeat(void *args);
 void HeartBeatCleanup(void *args);
 
 
+typedef int CANCEL;
 
 struct HeartBeatArgs
 {
@@ -22,7 +25,9 @@ struct HeartBeatArgs
     struct sockaddr_in *peerAddress;
     socklen_t peerAddrSize;
     void *workerHeap;
+    CANCEL request;
 };
+
 
 
 int main()
@@ -61,6 +66,7 @@ int main()
   hbargs.socket = sfd;
   hbargs.peerAddrSize = sizeof(peerAddress);
   hbargs.peerAddress = &peerAddress;
+  hbargs.request = FALSE;
 
 
   //Heartbeat worker thread
@@ -70,9 +76,6 @@ int main()
   //Wait for a bit
   sleep(4);
 
-  //Try printing buffer allocated by the thread
-  printf("%s\n", (char*)hbargs.workerHeap);
-  
   char buffer[MAX_BUFFER];
   while(TRUE)
   {
@@ -80,49 +83,91 @@ int main()
         
         if(strcmp("stop", buffer) == 0)
         {
-            printf("Stopping heart beat thread\n");
-            pthread_cancel(heartBeatSender);
-            break;
+            hbargs.request = TRUE;
+        }
+
+        if(strcmp("start", buffer) == 0)
+        {
+            hbargs.request = FALSE;
+            rc = pthread_create(&heartBeatSender, NULL, SendHeartbeat,(void*)&hbargs);
+        }
+
+        if(strcmp("end", buffer) ==0)
+        {
+            hbargs.request = TRUE;
+            pthread_join(heartBeatSender, NULL);
         }
 
   }
 
-  
-  //Join with the heart beat thread
-  pthread_join(heartBeatSender, NULL);
+  exit(EXIT_SUCCESS);
   
 }
 
 void *SendHeartbeat(void *args)
 {
-    int __oldType;
-    void *__heap = malloc(MAX_BUFFER);
-    char *__buffer = (char*)__heap;
+    const char* defferedCancelation = "Deffered\n";
+    const char* asynchronousCancellation = "Asynchronous\n";
+    const char* enabledCancelation = "Enabled\n";
+    const char* disabledCancelation = "Disabled\n";
 
-    *__buffer = 'O';
-    *(__buffer+1) = 'K';
-    *(__buffer+2) = '\0';
+    const char *cancelState[2] = {enabledCancelation, disabledCancelation};
+    const char *cancelTypes[2] = {defferedCancelation, asynchronousCancellation};
 
-    int __heartBeatsSent = 0;
+    int __oldType, __oldState, __heartBeatsSent = 0;
     struct HeartBeatArgs *__args = (struct HeartBeatArgs*)args;
-
-    //This should be accessible by the main thread
-    __args->workerHeap = __heap;
    
+    //Switch to deferred cancelation type
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &__oldType);
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &__oldState);
+
+    printf("Previous cancelation type was ");
+    printf("Previous cancel state was %d\n", __oldState);
+
+    switch (__oldType) {
+        case PTHREAD_CANCEL_DEFERRED:
+            printf("%s\n", cancelTypes[__oldType]);
+            break;
+
+        case PTHREAD_CANCEL_ASYNCHRONOUS:
+            printf("%s\n", cancelTypes[__oldType]);
+            break;
+
+        default:
+            break;
+    }
+
+    switch (__oldState) {
+        case PTHREAD_CANCEL_DISABLE:
+            printf("%s\n", cancelState[__oldState]);
+            break;
+
+        case PTHREAD_CANCEL_ENABLE:
+            printf("%s\n", cancelState[__oldState]);
+            break;
+
+        default:
+            break;
+    }
+
+
     while(1)
     {  
+        //check if cancelation was requested
+        if(__args->request) {
+            HeartBeatCleanup(NULL);
+            pthread_exit(NULL);
+        }
+
+        printf("Sending heartbeat\n");
         sendto(__args->socket, "Heartbeat", 9, 0, (struct sockaddr*)__args->peerAddress, __args->peerAddrSize);
-        pthread_cleanup_push(HeartBeatCleanup,args);
         sleep(5);
-        pthread_cleanup_pop(1);
+        
     }
 
 }
 
 void HeartBeatCleanup(void *args)
 {
-    struct HeartBeatArgs *__hargs = (struct HeartBeatArgs*)args;
-    free(__hargs->workerHeap);
-    printf("HeartBeatCleanup called for thread %lu\n", pthread_self());
+    printf("Cancellation request. Thread %lu will terminate\n", pthread_self());
 }
