@@ -9,9 +9,9 @@ client:
 
 server:
 	gcc server.c -o server -L -lphtread
+
+cancel:
+	gcc cancel.c -L -lphtread -o cancel
 	
 clean:
-	rm -f client
-	rm -f clinet.o
-	rm -f server
-	rm -f server.o
+	rm -f *.o

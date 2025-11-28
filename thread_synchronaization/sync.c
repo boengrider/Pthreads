@@ -49,8 +49,6 @@ int main()
   struct Operation mulThreadOp = { 4, MUL, 2, &accumulator };
   pthread_create(&addThread, NULL, Operation, (void*)&addThreadOp);
   pthread_create(&mulThread, NULL, Operation, (void*)&mulThreadOp);
-
-
   pthread_join(addThread, NULL);
   pthread_join(mulThread, NULL);
   exit(EXIT_SUCCESS);
@@ -61,6 +59,7 @@ int main()
 //Performs operation on data based on opcode
 void *Operation(void *args)
 {
+    
     printf("Thread %lu started\n",pthread_self());
     int __rc,__opcode;
     unsigned long __tmp;
@@ -71,11 +70,9 @@ void *Operation(void *args)
     printf("Entering while loop\n");
     while(TRUE)
     {
-        /**
-        if((__rc = pthread_mutex_trylock(__mtx)) < 0)
-            perror("pthread_mutex_trylock()");
-        **/
-       
+        
+      
+
         pthread_mutex_lock(__mtx);
         switch (__opcode) {
             case ADD:
@@ -96,5 +93,10 @@ void *Operation(void *args)
 
         printf("accumulator: %lu\n", __tmp);
         sleep(__op->delay);
+       
     }   
+    
 }
+
+
+
