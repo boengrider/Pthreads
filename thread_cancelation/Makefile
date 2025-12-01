@@ -10,8 +10,10 @@ client:
 server:
 	gcc server.c -o server -L -lphtread
 
-cancel:
-	gcc cancel.c -L -lphtread -o cancel
+async-cancel:
+	gcc async-cancel.c -L -lphtread -o asynccancel
 	
+def-cancel:
+	gcc def-cancel.c -L -lphtread -o defcancel
 clean:
 	rm -f *.o
