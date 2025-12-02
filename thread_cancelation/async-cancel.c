@@ -1,4 +1,4 @@
-//Example of defered cancelation
+//Example of asynchronous cancelation
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -61,8 +61,8 @@ int main()
 
 void *thread_routine(void *arg)
 {
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-    //pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     //LIFO
     pthread_cleanup_push(cancel_handler_B, NULL); //Gets called 2nd
     pthread_cleanup_push(cancel_handler, NULL);   //Gets called 1st
@@ -78,6 +78,8 @@ void *thread_routine(void *arg)
 
         sleep(2);
     }
+
+    //Pop handlers in case thread runs to the completion
     pthread_cleanup_pop(0);
     pthread_cleanup_pop(0);
 }
