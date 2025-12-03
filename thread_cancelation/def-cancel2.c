@@ -69,11 +69,14 @@ void *thread_routine(void *arg)
     printf("Starting thread routine\n");
     for(counter = 0; ; counter++)
     {
-        printf("counter is %d\n",counter);
+        printf("counter %% 10 is %d\n", (counter % 10));
+        if(counter % 10 == 0)
+        {
+            printf("Calling pthread_testcancel()\n");
+            pthread_testcancel();
+        }
+
         sleep(2);
-        printf("Calling pthread_testcancel()\n");
-        pthread_testcancel();
-       
     }
     pthread_cleanup_pop(0);
     pthread_cleanup_pop(0);
@@ -81,14 +84,12 @@ void *thread_routine(void *arg)
 
 void cancel_handler(void *arg)
 {
-    printf("cancel_handler() invoked\n");
     //Reset counter upon thread exit
     counter = 0;
 }
 
 void cancel_handler_B(void *arg)
 {
-    printf("cancel_handler_B() invoked\n");
     //Set counter to 100
     counter = 100;
 }
