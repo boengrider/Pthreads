@@ -56,12 +56,13 @@ int main()
         printf("Thread was not canceled\n");
     }
 
-
 }
 
 void *thread_routine(void *arg)
 {
-    
+    counter = rand();
+    sleep(4);
+    //We will cancel thread before it has a chance to push cleanup handlers
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     //LIFO
