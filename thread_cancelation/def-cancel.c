@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <limits.h>
 
 void *thread_routine(void *arg);
 void cancel_handler(void *arg);
@@ -61,17 +62,28 @@ int main()
 
 void *thread_routine(void *arg)
 {
+    unsigned int __counter;
+
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, 0);
-    //pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     //LIFO
     pthread_cleanup_push(cancel_handler_B, NULL); //Gets called 2nd
     pthread_cleanup_push(cancel_handler, NULL);   //Gets called 1st
     printf("Starting thread routine\n");
     for(counter = 0; ; counter++)
     {
+    
+      
         printf("counter is %d\n",counter);
-        sleep(2);
-        printf("Calling pthread_testcancel()\n");
+
+        //Simulate long running task
+        //sleep() won't work here since it's a cancelation point
+        __counter = 0;
+        while(__counter < UINT_MAX)
+        {
+            __counter++;
+        }
+
         pthread_testcancel();
        
     }

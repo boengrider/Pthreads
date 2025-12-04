@@ -19,8 +19,5 @@ async-cancel_delayed:
 def-cancel:
 	gcc def-cancel.c -L -lphtread -o defcancel
 
-def-cancel2:
-	gcc def-cancel2.c -L -lphtread -o defcancel2
-	
 clean:
 	rm -f *.o
