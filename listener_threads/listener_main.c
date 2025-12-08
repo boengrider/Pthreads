@@ -18,8 +18,8 @@ int main()
     pthread_t listenerNetworkA, listenerNetworkB;
     listener_network_result_t *listenerNetworkResA, *listenerNetworkResB;
 
-    static listener_network_args_t listenerNetworkArgsA = { ADDRESS, 0, 3000 };
-    static listener_network_args_t listenerNetworkArgsB = { ADDRESS, 0, 3001 };
+    static listener_network_args_t listenerNetworkArgsA = { ADDRESS, 0, 4000 };
+    static listener_network_args_t listenerNetworkArgsB = { ADDRESS, 0, 4001 };
 
 
     status = pthread_create(&listenerNetworkA, NULL, 
