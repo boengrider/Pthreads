@@ -8,7 +8,7 @@
 #include <sys/socket.h>
 #include <pthread.h>
 
-#define ADDRESS "127.0.0.1"
+#define ADDRESS "46.36.41.217"
 
 int main()
 {
