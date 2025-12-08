@@ -4,6 +4,15 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+typedef struct listener_user_args_
+{
+
+} listener_user_args_t;
+
+typedef struct listener_user_result_
+{
+    int threadErrno;
+} listener_user_result_t;
 
 typedef struct listener_network_args_
 {

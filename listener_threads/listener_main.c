@@ -4,6 +4,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <printf.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <pthread.h>
 
@@ -13,10 +14,12 @@ int main()
 {
 
     int status;
+    int flag = 0;
     pthread_t listenerNetworkA, listenerNetworkB;
+    listener_network_result_t *listenerNetworkResA, *listenerNetworkResB;
 
-    static listener_network_args_t listenerNetworkArgsA = { ADDRESS, IPPROTO_UDP, 3000 };
-    static listener_network_args_t listenerNetworkArgsB = { ADDRESS, IPPROTO_UDP, 3001 };
+    static listener_network_args_t listenerNetworkArgsA = { ADDRESS, 0, 3000 };
+    static listener_network_args_t listenerNetworkArgsB = { ADDRESS, 0, 3001 };
 
 
     status = pthread_create(&listenerNetworkA, NULL, 
@@ -38,11 +41,29 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    //Beyond this point listener threads should be up and running
+    // join with the two listener threads
+    pthread_join(listenerNetworkA, (void*)&listenerNetworkResA);
+    pthread_join(listenerNetworkB, (void*)&listenerNetworkResB);
 
-    pthread_join(listenerNetworkA, NULL);
-    pthread_join(listenerNetworkB, NULL);
+    if(listenerNetworkResA->threadErrno != 0) {
+        printf("%s\n", strerror(listenerNetworkResA->threadErrno));
+        flag = listenerNetworkResA->threadErrno;
+    }
 
-    exit(EXIT_SUCCESS);
+    if(listenerNetworkResB->threadErrno != 0) {
+        printf("%s\n", strerror(listenerNetworkResB->threadErrno));
+        flag = listenerNetworkResB->threadErrno;
+    }
+
+    // release memory allocated for result structures
+    free((void*)listenerNetworkResA);
+    free((void*)listenerNetworkResB);
+
+
+    if(flag == 0)
+        exit(EXIT_SUCCESS);
+    
+    exit(EXIT_FAILURE);
+
     
 }
