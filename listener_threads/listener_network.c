@@ -32,8 +32,7 @@ void *listener_network(void *args)
     listener_network_result_t *res = malloc(sizeof(listener_network_result_t));  
 
     listener_network_args_t *largs = (listener_network_args_t*)args;
-    printf("Thread %lu is serving address %s and port %d\n", pthread_self(), largs->bind_address, largs->port);
-
+   
     // store this IP address in bindAddress
     inet_pton(AF_INET, largs->bind_address, &(bindAddress.sin_addr));
 
@@ -43,6 +42,7 @@ void *listener_network(void *args)
     if(!ISVALIDSOCKET(socketListen))
     {
         res->threadErrno = errno;
+        largs->info.state = Failed;
         pthread_exit((void*)res);
     }
 
@@ -55,8 +55,13 @@ void *listener_network(void *args)
     if(status != 0)
     {
         res->threadErrno = errno;
-        return (void*)res;
+        largs->info.state = Failed;
+        pthread_exit((void*)res);
+        
     }
+
+    printf("Thread %lu is serving address %s and port %d\n", pthread_self(), largs->bind_address, largs->port);
+    largs->info.state = Operational;
 
     // one shot receive
     bytesReceived = recvfrom(socketListen, buffer, sizeof(buffer), 0,

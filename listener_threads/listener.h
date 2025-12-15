@@ -1,12 +1,30 @@
 #include <arpa/inet.h>
+#include <bits/pthreadtypes.h>
+#include <stdint.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netdb.h>
 
+
+
+typedef enum thread_startup_state_
+{
+    Operational,
+    Failed,
+    Unknown,
+} thread_startup_state_t;
+
+struct thread_startup_info
+{
+    pthread_mutex_t mutex;
+    thread_startup_state_t state;
+};
+
 typedef struct listener_user_args_
 {
-
+    char terminatingCharacter;
+    struct thread_startup_info info ;
 } listener_user_args_t;
 
 typedef struct listener_user_result_
@@ -19,6 +37,7 @@ typedef struct listener_network_args_
     char *bind_address;
     int protocol;
     int port;
+    struct thread_startup_info info ;
 } listener_network_args_t;
 
 typedef struct listener_network_result_
