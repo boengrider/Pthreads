@@ -6,7 +6,11 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-
+struct thread_list
+{
+    uint32_t count;
+    pthread_t threads[20];
+};
 
 typedef enum thread_startup_state_
 {
@@ -23,7 +27,8 @@ struct thread_startup_info
 typedef struct listener_user_args_
 {
     char terminatingCharacter;
-    struct thread_startup_info info ;
+    struct thread_startup_info info;
+    struct thread_list *list;
 } listener_user_args_t;
 
 typedef struct listener_user_result_
@@ -36,7 +41,7 @@ typedef struct listener_network_args_
     char *bind_address;
     int protocol;
     int port;
-    struct thread_startup_info info ;
+    struct thread_startup_info info;
 } listener_network_args_t;
 
 typedef struct listener_network_result_

@@ -18,6 +18,10 @@
 #define ADDRESS "127.0.0.1"
 #endif
 
+
+
+void thread_list_init(struct thread_list*);
+
 int main()
 {
 
@@ -27,35 +31,39 @@ int main()
     listener_network_result_t *listenerNetworkResA, *listenerNetworkResB;
     listener_user_result_t *listenerUserRes;
 
-    static listener_user_args_t listenerUserArgs = { 'z',  {Unknown}};
+    static struct thread_list threadList;
+    thread_list_init(&threadList);
+
+    static listener_user_args_t listenerUserArgs = { 'z',  {Unknown}, &threadList};
     static listener_network_args_t listenerNetworkArgsA = { ADDRESS, 0, 4000, {Unknown}};
     static listener_network_args_t listenerNetworkArgsB = { ADDRESS, 0, 4001, {Unknown}};
 
     pthread_attr_t attrs;
     pthread_attr_init(&attrs);
-    pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
+    pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
 
     status = pthread_create(&listenerNetworkA, &attrs, 
-                            listener_network, (void*)&listenerNetworkArgsA);
-
+             listener_network, (void*)&listenerNetworkArgsA);
     if(status != 0)
     {
         perror("Network listener thread create");
         exit(EXIT_FAILURE);
     }
+    threadList.threads[threadList.count++] = listenerNetworkA;
+
 
     status = pthread_create(&listenerNetworkB, &attrs,
-         listener_network, (void*)&listenerNetworkArgsB);
-
-        
+             listener_network, (void*)&listenerNetworkArgsB);  
     if(status != 0)
     {
         perror("Network listener thread create");
         exit(EXIT_FAILURE);
     }
+    threadList.threads[threadList.count++] = listenerNetworkB;
+   
     
-    int __stateA, __stateB = Unknown;
     // check operational status of both network listeners before proceeding
+    int __stateA, __stateB = Unknown;
     while(__stateA + __stateB != 0)
     {
         __stateA = listenerNetworkArgsA.info.state;
@@ -72,6 +80,7 @@ int main()
         perror("User listener thread create");
         exit(EXIT_FAILURE);
     }
+    threadList.threads[threadList.count++] = listenerUser;
 
    
     // join with child threads
@@ -112,4 +121,18 @@ int main()
     exit(EXIT_SUCCESS);
 
     
+}
+
+void thread_list_init(struct thread_list *list)
+{
+    list->threads[0] = pthread_self();
+    list->count = 1;
+}
+
+extern void threads_list(struct thread_list *list)
+{
+    for(int i = 0; i < list->count; i++)
+    {
+        printf("%d) %lu\n", i, list->threads[i]);
+    }
 }
