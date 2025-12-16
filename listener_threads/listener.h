@@ -17,7 +17,6 @@ typedef enum thread_startup_state_
 
 struct thread_startup_info
 {
-    pthread_mutex_t mutex;
     thread_startup_state_t state;
 };
 

@@ -1,4 +1,5 @@
 #include "listener.h"
+#include <bits/pthreadtypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <netdb.h>
@@ -26,13 +27,15 @@ int main()
     listener_network_result_t *listenerNetworkResA, *listenerNetworkResB;
     listener_user_result_t *listenerUserRes;
 
-    static listener_user_args_t listenerUserArgs = { 'z',  {PTHREAD_MUTEX_INITIALIZER, Unknown}};
-    static listener_network_args_t listenerNetworkArgsA = { ADDRESS, 0, 4000, {PTHREAD_MUTEX_INITIALIZER, Unknown}};
-    static listener_network_args_t listenerNetworkArgsB = { ADDRESS, 0, 4001, {PTHREAD_MUTEX_INITIALIZER, Unknown}};
+    static listener_user_args_t listenerUserArgs = { 'z',  {Unknown}};
+    static listener_network_args_t listenerNetworkArgsA = { ADDRESS, 0, 4000, {Unknown}};
+    static listener_network_args_t listenerNetworkArgsB = { ADDRESS, 0, 4001, {Unknown}};
 
+    pthread_attr_t attrs;
+    pthread_attr_init(&attrs);
+    pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
 
-
-    status = pthread_create(&listenerNetworkA, NULL, 
+    status = pthread_create(&listenerNetworkA, &attrs, 
                             listener_network, (void*)&listenerNetworkArgsA);
 
     if(status != 0)
@@ -41,7 +44,7 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    status = pthread_create(&listenerNetworkB, NULL,
+    status = pthread_create(&listenerNetworkB, &attrs,
          listener_network, (void*)&listenerNetworkArgsB);
 
         
@@ -55,17 +58,8 @@ int main()
     // check operational status of both network listeners before proceeding
     while(__stateA + __stateB != 0)
     {
-       
-
-        pthread_mutex_lock(&listenerNetworkArgsA.info.mutex);
         __stateA = listenerNetworkArgsA.info.state;
-        pthread_mutex_unlock(&listenerNetworkArgsA.info.mutex);
-
-        pthread_mutex_lock(&listenerNetworkArgsB.info.mutex);
-        __stateA = listenerNetworkArgsB.info.state;
-        pthread_mutex_unlock(&listenerNetworkArgsB.info.mutex);
-
-        printf("%d %d\n", __stateA, __stateB);
+        __stateB = listenerNetworkArgsB.info.state;
     }
 
     printf("Both network listeners operational\n");
@@ -79,11 +73,15 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    // join with the two listener threads
+   
+    // join with child threads
+    pthread_join(listenerUser, (void*)&listenerUserRes);
     pthread_join(listenerNetworkA, (void*)&listenerNetworkResA);
     pthread_join(listenerNetworkB, (void*)&listenerNetworkResB);
-    pthread_join(listenerUser, (void*)&listenerUserRes);
     
+    printf("Joined with the child thread\n");
+    
+    printf("%p %p %p\n", listenerNetworkResA, listenerNetworkResB, listenerUserRes);
 
     if(listenerNetworkResA->threadErrno != 0) {
         printf("%s\n", strerror(listenerNetworkResA->threadErrno));
@@ -100,16 +98,18 @@ int main()
         flag = listenerUserRes->threadErrno;
     }
 
+    
+
     // release memory allocated for result structures
     free((void*)listenerNetworkResA);
     free((void*)listenerNetworkResB);
     free((void*)listenerUserRes);
 
 
-    if(flag == 0)
-        exit(EXIT_SUCCESS);
+    if(flag != 0)
+        exit(EXIT_FAILURE);
     
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 
     
 }

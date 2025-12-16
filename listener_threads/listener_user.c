@@ -32,8 +32,6 @@ void *listener_user(void *args)
             
     }
 
-    printf("Terminating signal received\n");
-
     return (void*)res;
 
 }

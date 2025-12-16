@@ -8,9 +8,12 @@
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 #define ISVALIDSOCKET(s) ((s) >= 0)
+#define TRUE 1
 typedef int SOCKET;
+
 
 
 void *listener_network(void *args)
@@ -65,11 +68,14 @@ void *listener_network(void *args)
 
     // one shot receive
     bytesReceived = recvfrom(socketListen, buffer, sizeof(buffer), 0,
-                            (struct sockaddr*)&peerAddress, &peerAddrLen);
+                                (struct sockaddr*)&peerAddress, &peerAddrLen);
 
     inet_ntop(peerAddress.sin_family, (void*)&peerAddress.sin_addr, peerAddressBuffer, sizeof(peerAddress));
-    
     printf("[listener %lu] received data: %s from peer %s\n", self, buffer, peerAddressBuffer);
+    
+
+    shutdown(socketListen, SHUT_RDWR);
+    
     return (void*)res;
 
 }
