@@ -6,10 +6,12 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#define MAX_THREADS 20
+
 struct thread_list
 {
     uint32_t count;
-    pthread_t threads[20];
+    pthread_t threads[MAX_THREADS];
 };
 
 typedef enum thread_startup_state_
@@ -38,6 +40,7 @@ typedef struct listener_user_result_
 
 typedef struct listener_network_args_
 {
+    char terminate;
     char *bind_address;
     int protocol;
     int port;
