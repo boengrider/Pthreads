@@ -35,8 +35,8 @@ int main()
     thread_list_init(&threadList);
 
     static listener_user_args_t listenerUserArgs = { 'z',  {Unknown}, &threadList};
-    static listener_network_args_t listenerNetworkArgsA = { ADDRESS, 0, 4000, {Unknown}};
-    static listener_network_args_t listenerNetworkArgsB = { ADDRESS, 0, 4001, {Unknown}};
+    static listener_network_args_t listenerNetworkArgsA = { 0,ADDRESS, 0, 4000, {Unknown}};
+    static listener_network_args_t listenerNetworkArgsB = { 0,ADDRESS, 0, 4001, {Unknown}};
 
     pthread_attr_t attrs;
     pthread_attr_init(&attrs);
