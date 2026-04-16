@@ -2,8 +2,10 @@
 #include <curl/curlver.h>
 #include <curl/easy.h>
 #include <curl/options.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <memory.h>
 
@@ -11,7 +13,7 @@
 #define CURL_ERROR_PREFIX "curl error: "
 CURL *easy_handle; // will be resued by threads
 size_t write_callback(char *data, size_t size, size_t nmemb, void *user_buffer);
-static size_t mem_write_callback(char *data, size_t size, size_t nmemb, void *user_buffer);
+static size_t mem_write_callback(void *data, size_t size, size_t nmemb, void *user_buffer);
 
 struct curl_response {
     char *data;
@@ -23,20 +25,7 @@ struct curl_response {
 int main()
 {
    
-    struct curl_response user_data = { .data = 0, .size = 10 };
-
-    char *p_new_mem;
-    fprintf(stdout, "p_new_mem %p\nPointer to data %p\nAllocated memory so far %lu\n", p_new_mem, user_data.data, user_data.size);
-    p_new_mem = realloc((void*)user_data.data, user_data.size + 1000);
-
-    fprintf(stdout, "p_new_mem %p\nPointer to data %p\nAllocated memory so far %lu\n", p_new_mem, user_data.data, user_data.size);
-    p_new_mem = realloc((void*)user_data.data, user_data.size + 1000);
-
-    fprintf(stdout, "p_new_mem %p\nPointer to data %p\nAllocated memory so far %lu\n", p_new_mem, user_data.data, user_data.size);
-    p_new_mem = realloc((void*)user_data.data, user_data.size + 1000);
-
-    free(p_new_mem);
-    return 0;
+    struct curl_response chunk = { .data = malloc(0), .size = 0 };
     // Main https://everything.curl.dev/transfers/drive/multi.html
     // Write callback https://everything.curl.dev/transfers/callbacks/write.html
    
@@ -69,12 +58,12 @@ int main()
         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
     // Register read callback with libcurl so that we can do other things than just default fwrite call
-    rc = curl_easy_setopt(easy_handle, CURLOPT_WRITEFUNCTION, write_callback);
+    rc = curl_easy_setopt(easy_handle, CURLOPT_WRITEFUNCTION, mem_write_callback);
     if(rc != CURLE_OK)
         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
     // libcurl will pass this pointer to our callback
-    rc = curl_easy_setopt(easy_handle, CURLOPT_WRITEDATA, (void*)&user_data);
+    rc = curl_easy_setopt(easy_handle, CURLOPT_WRITEDATA, (void*)&chunk);
     if(rc != CURLE_OK)
         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
@@ -93,16 +82,27 @@ int main()
     // All options set successfully byond this point
     // Perform the transfer
     CURLcode result = curl_easy_perform(easy_handle);
-    if(result != CURLE_OK)
+    if(result != CURLE_OK) 
+    {
         fprintf(stdout, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
+         // Free memory, previously allocated inside curl callback
+         free(chunk.data);
+         curl_global_cleanup();
+         exit(EXIT_FAILURE);
+    }
+
 
     // Print received data
-    fprintf(stdout, "%s\n", user_data.data);
+
+    fprintf(stdout, "Bytes transmitted %lu\n%s\n", chunk.size, chunk.data);
     
     curl_global_cleanup();
     exit(EXIT_SUCCESS);
 }
 
+/******************************************************/
+/**************** Function definitions  ***************/
+/******************************************************/
 size_t write_callback(char *data, size_t size, size_t nmemb, void *user_buffer)
 {
     // Realoc apropriate amount for buffer to hold data received 
@@ -121,11 +121,30 @@ size_t write_callback(char *data, size_t size, size_t nmemb, void *user_buffer)
     return (size_t)size * nmemb;
 }
 
-static size_t mem_write_callback(char *data, size_t size, size_t nmemb, void *user_buffer)
+static size_t mem_write_callback(void *data, size_t size, size_t nmemb, void *user_buffer)
 {
-    size_t curlAmountTransmitted = size * nmemb;
-    struct curl_response *response = (struct curl_response*)user_buffer;
+    static int transfers = 0;
+    transfers++;
 
-    // response->size will grow between each mem_write_callback call
-    char *ptr = realloc(response->data, response->size + curlAmountTransmitted + 1);
+    printf("Number of curl transfers %d\n", transfers);
+    struct curl_response *memory = (struct curl_response*)user_buffer;
+    size_t curlAmountTransmitted = size * nmemb;
+    
+    //Allocate sufficient amount of memory plus one byte more to store null terminator for later printing
+    void *tmp = realloc((void*)memory->data, memory->size + curlAmountTransmitted + 1);
+
+    if(!tmp)
+    {
+        // realloc failed
+        fprintf(stderr, "%s\n", "memory allocation has failed\n");
+        return -1;
+    }
+
+    memory->data = tmp;
+    memcpy(&memory->data[memory->size], data, curlAmountTransmitted);
+    memory->size += curlAmountTransmitted;
+    memory->data[memory->size] = 0;
+
+
+    return curlAmountTransmitted;
 }
