@@ -14,6 +14,8 @@
 CURL *easy_handle; // will be resued by threads
 size_t write_callback(char *data, size_t size, size_t nmemb, void *user_buffer);
 static size_t mem_write_callback(void *data, size_t size, size_t nmemb, void *user_buffer);
+static size_t mem_header_callback(void *data, size_t size, size_t nmemb, void *user_buffer);
+static int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
 struct curl_response {
     char *data;
@@ -25,7 +27,9 @@ struct curl_response {
 int main()
 {
    
-    struct curl_response chunk = { .data = malloc(0), .size = 0 };
+    struct curl_response body = { .data = malloc(0), .size = 0 };
+    struct curl_response header = { .data = malloc(0), .size = 0 };
+    struct curl_response progress = { .data = malloc(0), .size = 0};
     // Main https://everything.curl.dev/transfers/drive/multi.html
     // Write callback https://everything.curl.dev/transfers/callbacks/write.html
    
@@ -48,7 +52,7 @@ int main()
         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, curl_easy_strerror(rc));
 
     // Set URL
-    rc = curl_easy_setopt(easy_handle, CURLOPT_URL, "https://dsl.sk/");
+    rc = curl_easy_setopt(easy_handle, CURLOPT_URL, "https://swiss-point.abitec.sk:444/ajax/Handler/b2bapi.htm?APIKEY=fb8a82f1-ab0c-43c8-a3bb-a7a3b0dbaae6&DataDefinition=B2B_Info3&query=A.X_ZAKAZNICKE_CISLO_OP%3D%27516092575%27");
     if(rc != CURLE_OK)
         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
@@ -63,15 +67,35 @@ int main()
         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
     // libcurl will pass this pointer to our callback
-    rc = curl_easy_setopt(easy_handle, CURLOPT_WRITEDATA, (void*)&chunk);
+    rc = curl_easy_setopt(easy_handle, CURLOPT_WRITEDATA, (void*)&body);
     if(rc != CURLE_OK)
         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
+    // Register header callback with libcurl 
+    rc = curl_easy_setopt(easy_handle, CURLOPT_HEADERFUNCTION, mem_header_callback);
+    if(rc != CURLE_OK)
+        fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
+    // libcurl will pass this pointer to our callback
+    rc = curl_easy_setopt(easy_handle, CURLOPT_HEADERDATA, (void*)&header);
+    if(rc != CURLE_OK)
+        fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
+    // Register progress callback with libcurl
+    rc = curl_easy_setopt(easy_handle, CURLOPT_XFERINFOFUNCTION, progress_callback);
+    if(rc != CURLE_OK)
+        fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
-    // rc should be 0 if all options setting were ok
-    // Exit if any option settig failed
+     // libcurl will pass this pointer to our callback
+    rc = curl_easy_setopt(easy_handle, CURLOPT_XFERINFODATA, (void*)&progress);
+    if(rc != CURLE_OK)
+         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
+
+    // enable progress 
+    rc = curl_easy_setopt(easy_handle, CURLOPT_NOPROGRESS, 0);
+
+    // Beyond this point
+    // rc should be 0 if all options were set properly
     if(rc)
     {
         curl_global_cleanup();
@@ -86,7 +110,7 @@ int main()
     {
         fprintf(stdout, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
          // Free memory, previously allocated inside curl callback
-         free(chunk.data);
+         free(body.data);
          curl_global_cleanup();
          exit(EXIT_FAILURE);
     }
@@ -94,7 +118,11 @@ int main()
 
     // Print received data
 
-    fprintf(stdout, "Bytes transmitted %lu\n%s\n", chunk.size, chunk.data);
+    fprintf(stdout, "Bytes transmitted %lu\n%s\n", body.size, body.data);
+    fprintf(stdout, "Header size %lu\n%s\n", header.size, header.data);
+
+    free(header.data);
+    free(body.data);
     
     curl_global_cleanup();
     exit(EXIT_SUCCESS);
@@ -123,15 +151,12 @@ size_t write_callback(char *data, size_t size, size_t nmemb, void *user_buffer)
 
 static size_t mem_write_callback(void *data, size_t size, size_t nmemb, void *user_buffer)
 {
-    static int transfers = 0;
-    transfers++;
-
-    printf("Number of curl transfers %d\n", transfers);
-    struct curl_response *memory = (struct curl_response*)user_buffer;
+   
+    struct curl_response *__memory = (struct curl_response*)user_buffer;
     size_t curlAmountTransmitted = size * nmemb;
     
     //Allocate sufficient amount of memory plus one byte more to store null terminator for later printing
-    void *tmp = realloc((void*)memory->data, memory->size + curlAmountTransmitted + 1);
+    void *tmp = realloc((void*)__memory->data, __memory->size + curlAmountTransmitted + 1);
 
     if(!tmp)
     {
@@ -140,11 +165,43 @@ static size_t mem_write_callback(void *data, size_t size, size_t nmemb, void *us
         return -1;
     }
 
-    memory->data = tmp;
-    memcpy(&memory->data[memory->size], data, curlAmountTransmitted);
-    memory->size += curlAmountTransmitted;
-    memory->data[memory->size] = 0;
+    __memory->data = tmp;
+    memcpy(&__memory->data[__memory->size], data, curlAmountTransmitted);
+    __memory->size += curlAmountTransmitted;
+    __memory->data[__memory->size] = 0;
 
 
     return curlAmountTransmitted;
+}
+
+static size_t mem_header_callback(void *data, size_t size, size_t nmemb, void *user_buffer)
+{
+    
+    struct curl_response *__memory = (struct curl_response*)user_buffer;
+    size_t curlAmountTransmitted = size * nmemb;
+    
+     //Allocate sufficient amount of memory plus one byte more to store null terminator for later printing
+     void *tmp = realloc((void*)__memory->data, __memory->size + curlAmountTransmitted + 1);
+
+     if(!tmp)
+     {
+         // realloc failed
+         fprintf(stderr, "%s\n", "memory allocation has failed\n");
+         return -1;
+     }
+ 
+     __memory->data = tmp;
+     memcpy(&__memory->data[__memory->size], data, curlAmountTransmitted);
+     __memory->size += curlAmountTransmitted;
+     __memory->data[__memory->size] = 0;
+ 
+ 
+     return curlAmountTransmitted;
+}
+
+static int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
+{
+    fprintf(stdout, "... downloading data: %ld bytes of %ld\n", dlnow, dltotal);
+
+    return 0;
 }
