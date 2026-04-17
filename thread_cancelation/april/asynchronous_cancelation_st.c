@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <memory.h>
+#include <pthread.h>
 
 
 #define CURL_ERROR_PREFIX "curl error: "
@@ -17,6 +18,7 @@ static size_t mem_write_callback(void *data, size_t size, size_t nmemb, void *us
 static size_t mem_header_callback(void *data, size_t size, size_t nmemb, void *user_buffer);
 static int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
+
 struct curl_response {
     char *data;
     size_t size;
@@ -24,9 +26,19 @@ struct curl_response {
 
 
 
-int main()
+int main(int argc, char *argv[])
 {
    
+    if(argc < 2) {
+        fprintf(stderr, "Usage %s URL\n\tExample:\n\tac https:\\\\dsl.sk\n", argv[0]); 
+        exit(EXIT_FAILURE);
+    }
+
+  
+
+
+
+
     struct curl_response body = { .data = malloc(0), .size = 0 };
     struct curl_response header = { .data = malloc(0), .size = 0 };
     struct curl_response progress = { .data = malloc(0), .size = 0};
@@ -52,7 +64,7 @@ int main()
         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, curl_easy_strerror(rc));
 
     // Set URL
-    rc = curl_easy_setopt(easy_handle, CURLOPT_URL, "https://swiss-point.abitec.sk:444/ajax/Handler/b2bapi.htm?APIKEY=fb8a82f1-ab0c-43c8-a3bb-a7a3b0dbaae6&DataDefinition=B2B_Info3&query=A.X_ZAKAZNICKE_CISLO_OP%3D%27516092575%27");
+    rc = curl_easy_setopt(easy_handle, CURLOPT_URL, argv[1]);
     if(rc != CURLE_OK)
         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
@@ -103,12 +115,15 @@ int main()
     }
  
     
+    
     // All options set successfully byond this point
     // Perform the transfer
     CURLcode result = curl_easy_perform(easy_handle);
     if(result != CURLE_OK) 
     {
+        fprintf(stdout, "CURLcode -> %d\n", result);
         fprintf(stdout, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
+        fprintf(stderr, "%s\n",curl_easy_strerror(rc));
          // Free memory, previously allocated inside curl callback
          free(body.data);
          curl_global_cleanup();
@@ -116,9 +131,8 @@ int main()
     }
 
 
-    // Print received data
-
-    fprintf(stdout, "Bytes transmitted %lu\n%s\n", body.size, body.data);
+    // Print received data + header
+    //fprintf(stdout, "Bytes transmitted %lu\n%s\n", body.size, body.data);
     fprintf(stdout, "Header size %lu\n%s\n", header.size, header.data);
 
     free(header.data);
