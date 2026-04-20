@@ -40,19 +40,28 @@ struct dl_thread_args_t {
 int main(int argc, char *argv[])
 {
    
+
  
     // Worker thread realated stuff
     int status;
-    pthread_t dl_threadA, dlThreadB;
+    pthread_t dlThreadA, dlThreadB;
     struct dl_thread_args_t dlArgsA = { "https://dsl.sk" };
     struct dl_thread_args_t dlArgsB = dlArgsA;
 
+    // Some libcurl stuff on the main thread
+    curl_version_info_data *version = curl_version_info( CURLVERSION_NOW );
+    printf("Using libcurl version: %s\n", version->version);
+    curl_global_init( CURL_GLOBAL_DEFAULT );
+
+
+    /**
     // Downloader thread A
-    status = pthread_create(&dl_threadA, NULL, dl_thread, (void*)&dlArgsA);
+    status = pthread_create(&dlThreadA, NULL, dl_thread, (void*)&dlArgsA);
     if(status != THREAD_CREATE_OK) {
         fprintf(stderr, "Error creating a new thread\n");
         exit(EXIT_FAILURE);
     }
+    **/
 
     // Downloader thread B
     status = pthread_create(&dlThreadB, NULL, dl_thread, (void*)&dlArgsB);
@@ -61,14 +70,11 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    // Some libcurl stuff on the main thread
-    curl_version_info_data *version = curl_version_info( CURLVERSION_NOW );
-    printf("Using libcurl version: %s\n", version->version);
-    curl_global_init( CURL_GLOBAL_DEFAULT );
+    
     
 
     // Join with the main thread
-    pthread_join(dl_threadA, NULL);
+    //pthread_join(dlThreadA, NULL);
     pthread_join(dlThreadB, NULL);
     
     curl_global_cleanup();
@@ -156,6 +162,7 @@ static int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow
 
 void *dl_thread(void *args) {
 
+    fprintf(stdout, "Launched worker thread %lu\n", pthread_self());
     struct dl_thread_args_t *thread_args = (struct dl_thread_args_t*)args;
 
     // This will hold a readable error message
@@ -166,11 +173,12 @@ void *dl_thread(void *args) {
 
      // Initialize easy handle. 
      easy_handle = curl_easy_init();
+     fprintf(stdout, "(%lu) easy handle %p\n", pthread_self(), easy_handle);
 
      // Set error buffer
      CURLcode rc = curl_easy_setopt(easy_handle, CURLOPT_ERRORBUFFER, CURL_ERROR_MESSAGE_BUFFER);
      if(rc != CURLE_OK)
-         fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, curl_easy_strerror(rc));
+         fprintf(stderr, "(%lu) %s %s\n", pthread_self(), CURL_ERROR_PREFIX, curl_easy_strerror(rc));
  
      // Set URL
      rc = curl_easy_setopt(easy_handle, CURLOPT_URL, thread_args->url);
@@ -203,8 +211,10 @@ void *dl_thread(void *args) {
          fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
  
      if(rc != CURLE_OK)
+     {
+        fprintf(stderr, "%s %s" "Option setting error\n");
         return (void*)0;
-
+     }
 
            
     // All options set successfully byond this point
@@ -212,20 +222,19 @@ void *dl_thread(void *args) {
     CURLcode result = curl_easy_perform(easy_handle);
     if(result != CURLE_OK) 
     {
-        fprintf(stdout, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
+        fprintf(stderr, "(%lu) CURL Error: %s\n", pthread_self(), curl_easy_strerror(result));
+        fprintf(stdout, "(%lu) %s printing curl error buffer %s\n", pthread_self(), CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
+    } else {
+
+        // All OK. Print received data + header
+        //fprintf(stdout, "Bytes transmitted %lu\n%s\n", body.size, body.data);
+        fprintf(stdout, "(%lu) Header:\n%s\n", pthread_self(), header.data);
+        //fprintf(stdout, "Header:\n%s\n", body.data);
+
+        // Release memory
         free(header.data);
         free(body.data);
     }
-
-    // All OK. Print received data + header
-    //fprintf(stdout, "Bytes transmitted %lu\n%s\n", body.size, body.data);
-    fprintf(stdout, "Header:\n%s\n", header.data);
-    fprintf(stdout, "Header:\n%s\n", body.data);
-
-    // Release memory
-    free(header.data);
-    free(body.data);
-    
 
     return (void*)0;
 }
