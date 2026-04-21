@@ -19,7 +19,6 @@
 
 #define THREAD_CREATE_OK 0
 #define CURL_ERROR_PREFIX "curl error: "
-CURL *easy_handle; // will be resued by threads
 size_t write_callback(char *data, size_t size, size_t nmemb, void *user_buffer);
 static size_t mem_write_callback(void *data, size_t size, size_t nmemb, void *user_buffer);
 static size_t mem_header_callback(void *data, size_t size, size_t nmemb, void *user_buffer);
@@ -54,14 +53,14 @@ int main(int argc, char *argv[])
     curl_global_init( CURL_GLOBAL_DEFAULT );
 
 
-    /**
+    
     // Downloader thread A
     status = pthread_create(&dlThreadA, NULL, dl_thread, (void*)&dlArgsA);
     if(status != THREAD_CREATE_OK) {
         fprintf(stderr, "Error creating a new thread\n");
         exit(EXIT_FAILURE);
     }
-    **/
+    
 
     // Downloader thread B
     status = pthread_create(&dlThreadB, NULL, dl_thread, (void*)&dlArgsB);
@@ -175,7 +174,7 @@ void *dl_thread(void *args) {
     struct curl_response header = { .data = malloc(0), .size = 0 };
 
      // Initialize easy handle. 
-     easy_handle = curl_easy_init();
+     CURL *easy_handle = curl_easy_init();
      fprintf(stdout, "(%lu) easy handle %p\n", pthread_self(), easy_handle);
 
      // Set error buffer

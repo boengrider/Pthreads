@@ -103,8 +103,8 @@ int main(int argc, char *argv[])
     if(rc != CURLE_OK)
          fprintf(stderr, "%s %s\n", CURL_ERROR_PREFIX, CURL_ERROR_MESSAGE_BUFFER);
 
-    // enable progress 
-    rc = curl_easy_setopt(easy_handle, CURLOPT_NOPROGRESS, 0);
+    // enable progress 0, disable progress 1
+    rc = curl_easy_setopt(easy_handle, CURLOPT_NOPROGRESS, 1);
 
     // Beyond this point
     // rc should be 0 if all options were set properly
