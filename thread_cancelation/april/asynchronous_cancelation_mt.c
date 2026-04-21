@@ -77,6 +77,9 @@ int main(int argc, char *argv[])
     //pthread_join(dlThreadA, NULL);
     pthread_join(dlThreadB, NULL);
     
+
+
+    
     curl_global_cleanup();
 
    
