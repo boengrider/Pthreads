@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <memory.h>
 #include <pthread.h>
+#include <sys/types.h>
 
 #define THREAD_CREATE_OK 0
 #define CURL_ERROR_PREFIX "curl error: "
@@ -33,8 +34,6 @@ struct curl_response {
 struct dl_thread_args_t {
     char *url;
 };
-
-
 
 int main(int argc, char *argv[])
 {
