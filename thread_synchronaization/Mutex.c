@@ -35,6 +35,7 @@ int main()
 {
    
 
+
     int rc, counter;
     pthread_t handle_t1, handle_t2, self;
 
@@ -73,12 +74,8 @@ int main()
 
         if(cmd == 'u')
         {
-            printf("(MAIN) received unlock command. Unlocking mutex\n");
-            rc = pthread_mutex_unlock(&my_data.mutex);
-            if(rc == EPERM)
-                printf("(MAIN) Mutex is not owned by thread (MAIN)\n");
-            if(rc == 0)
-                printf("unlocking mutex\n");
+            pthread_mutex_unlock(&my_data.mutex);
+            printf("unlocking mutex\n");
         }
 
         if(cmd == 'q')
